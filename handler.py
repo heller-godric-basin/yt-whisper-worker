@@ -16,14 +16,14 @@ from typing import Optional, Dict, Any
 
 import runpod
 import boto3
-from faster_whisper import WhisperModel
+import whisper
 
 # Global model cache
 current_model = None
 current_model_name = None
 
 
-def get_model(model_name: str = "large-v3"):
+def get_model(model_name: str = "large"):
     """Load and cache Whisper model"""
     global current_model, current_model_name
 
@@ -31,7 +31,7 @@ def get_model(model_name: str = "large-v3"):
         return current_model
 
     print(f"Loading Whisper model: {model_name}")
-    current_model = WhisperModel(model_name, device="cuda", compute_type="float16")
+    current_model = whisper.load_model(model_name, device="cuda")
     current_model_name = model_name
     return current_model
 
@@ -45,7 +45,7 @@ def format_timestamp(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
 
-def transcribe_to_srt(audio_path: str, model_name: str = "large-v3") -> str:
+def transcribe_to_srt(audio_path: str, model_name: str = "large") -> str:
     """
     Transcribe audio file to SRT format
     Returns the SRT content as a string
@@ -53,13 +53,13 @@ def transcribe_to_srt(audio_path: str, model_name: str = "large-v3") -> str:
     print(f"Transcribing audio file: {audio_path}")
 
     model = get_model(model_name)
-    segments, info = model.transcribe(audio_path, language="en", beam_size=5)
+    result = model.transcribe(audio_path, language="en", fp16=True)
 
     srt_content = []
-    for idx, segment in enumerate(segments, 1):
-        start_time = format_timestamp(segment.start)
-        end_time = format_timestamp(segment.end)
-        text = segment.text.strip()
+    for idx, segment in enumerate(result["segments"], 1):
+        start_time = format_timestamp(segment["start"])
+        end_time = format_timestamp(segment["end"])
+        text = segment["text"].strip()
 
         srt_content.append(f"{idx}\n{start_time} --> {end_time}\n{text}\n")
 

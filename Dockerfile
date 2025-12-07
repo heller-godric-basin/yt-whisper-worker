@@ -11,12 +11,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir \
-    faster-whisper==1.0.3 \
+    openai-whisper==20240930 \
     yt-dlp==2024.11.20 \
     pydub==0.25.1 \
     boto3==1.28.85 \
     runpod==1.5.4 \
-    requests==2.31.0
+    requests==2.31.0 \
+    torch==2.4.1
 
 ADD handler.py /handler.py
 
