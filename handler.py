@@ -159,12 +159,23 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
                 "request_id": request_id
             }
 
+        # Debug: Print all RUNPOD_SECRET_ environment variables
+        print("DEBUG: Checking for RUNPOD_SECRET_ environment variables:")
+        for key, value in os.environ.items():
+            if key.startswith("RUNPOD_SECRET_"):
+                print(f"  {key}: {'***' if 'SECRET' in key or 'KEY' in key else value}")
+
         # S3 configuration (can come from input or environment)
         s3_bucket = job_input.get("s3_bucket") or os.getenv("RUNPOD_SECRET_S3_BUCKET")
         s3_endpoint = job_input.get("s3_endpoint_url") or os.getenv("RUNPOD_SECRET_S3_ENDPOINT_URL")
         s3_key_prefix = job_input.get("s3_key_prefix", "transcriptions/")
         aws_access_key = job_input.get("aws_access_key") or os.getenv("RUNPOD_SECRET_AWS_ACCESS_KEY_ID")
         aws_secret_key = job_input.get("aws_secret_key") or os.getenv("RUNPOD_SECRET_AWS_SECRET_ACCESS_KEY")
+
+        print(f"DEBUG: s3_bucket = {s3_bucket}")
+        print(f"DEBUG: s3_endpoint = {s3_endpoint}")
+        print(f"DEBUG: aws_access_key = {'***' if aws_access_key else None}")
+        print(f"DEBUG: aws_secret_key = {'***' if aws_secret_key else None}")
 
         if not s3_bucket:
             return {
