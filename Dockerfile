@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install --no-cache-dir \
     openai-whisper==20240930 \
-    yt-dlp==2024.11.20 \
+    yt-dlp==2024.12.6 \
     pydub==0.25.1 \
     boto3==1.28.85 \
     runpod==1.5.4 \
