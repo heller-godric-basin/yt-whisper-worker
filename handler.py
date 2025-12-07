@@ -160,11 +160,11 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
             }
 
         # S3 configuration (can come from input or environment)
-        s3_bucket = job_input.get("s3_bucket") or os.getenv("S3_BUCKET")
-        s3_endpoint = job_input.get("s3_endpoint_url") or os.getenv("S3_ENDPOINT_URL")
+        s3_bucket = job_input.get("s3_bucket") or os.getenv("RUNPOD_SECRET_S3_BUCKET")
+        s3_endpoint = job_input.get("s3_endpoint_url") or os.getenv("RUNPOD_SECRET_S3_ENDPOINT_URL")
         s3_key_prefix = job_input.get("s3_key_prefix", "transcriptions/")
-        aws_access_key = job_input.get("aws_access_key") or os.getenv("AWS_ACCESS_KEY_ID")
-        aws_secret_key = job_input.get("aws_secret_key") or os.getenv("AWS_SECRET_ACCESS_KEY")
+        aws_access_key = job_input.get("aws_access_key") or os.getenv("RUNPOD_SECRET_AWS_ACCESS_KEY_ID")
+        aws_secret_key = job_input.get("aws_secret_key") or os.getenv("RUNPOD_SECRET_AWS_SECRET_ACCESS_KEY")
 
         if not s3_bucket:
             return {
