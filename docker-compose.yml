@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  yt-whisper-worker:
+    build: .
+    image: hellergodric/yt-whisper-worker:latest
+    runtime: nvidia
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+    volumes:
+      - ./logs:/logs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

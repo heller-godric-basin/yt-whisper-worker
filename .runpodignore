@@ -1,0 +1,11 @@
+.git
+.gitignore
+README.md
+*.md
+.runpodignore
+docker-compose.yml
+test/
+.env
+.env.local
+*.pyc
+__pycache__/
