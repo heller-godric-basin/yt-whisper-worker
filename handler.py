@@ -66,6 +66,38 @@ def transcribe_to_srt(audio_path: str, model_name: str = "large") -> str:
     return "\n".join(srt_content)
 
 
+def srt_to_vtt(srt_content: str) -> str:
+    """
+    Convert SRT format to WebVTT format
+    WebVTT header + SRT content with timestamp adjustments
+    """
+    vtt_lines = ["WEBVTT", "", ""]
+
+    for line in srt_content.split("\n"):
+        if line.strip() == "":
+            vtt_lines.append("")
+        elif "-->" in line:
+            # Convert SRT timestamp (HH:MM:SS,mmm) to VTT timestamp (HH:MM:SS.mmm)
+            vtt_timestamp = line.replace(",", ".")
+            vtt_lines.append(vtt_timestamp)
+        else:
+            vtt_lines.append(line)
+
+    return "\n".join(vtt_lines)
+
+
+def extract_video_id(youtube_url: str) -> str:
+    """
+    Extract YouTube video ID from various URL formats
+    Supports: youtube.com/watch?v=... and youtu.be/...
+    """
+    pattern = r'(?:youtube\.com\/watch\?v=|youtu\.be\/)([0-9A-Za-z_-]{11})'
+    match = re.search(pattern, youtube_url)
+    if match:
+        return match.group(1)
+    raise ValueError(f"Could not extract video ID from URL: {youtube_url}")
+
+
 def download_youtube_audio(youtube_url: str, output_dir: str) -> str:
     """Download YouTube video and extract audio as MP3"""
     print(f"Downloading audio from: {youtube_url}")
@@ -191,7 +223,11 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
             # Step 2: Transcribe to SRT
             srt_content = transcribe_to_srt(audio_path)
 
-            # Step 3: Save SRT locally and upload to S3
+            # Step 3: Extract video_id from YouTube URL
+            video_id = extract_video_id(youtube_url)
+            print(f"Extracted video_id: {video_id}")
+
+            # Step 4: Save SRT locally and upload to S3
             srt_filename = f"{request_id}.srt"
             srt_local_path = os.path.join(tmpdir, srt_filename)
             with open(srt_local_path, "w") as f:
@@ -207,12 +243,32 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
                 aws_secret_key=aws_secret_key
             )
 
+            # Step 5: Convert SRT to VTT and upload raw VTT to storage/raw/
+            vtt_content = srt_to_vtt(srt_content)
+            vtt_filename = f"{video_id}.en.vtt"
+            vtt_local_path = os.path.join(tmpdir, vtt_filename)
+            with open(vtt_local_path, "w") as f:
+                f.write(vtt_content)
+
+            raw_vtt_key = f"storage/raw/{vtt_filename}"
+            raw_vtt_path = upload_to_s3(
+                vtt_local_path,
+                s3_bucket,
+                raw_vtt_key,
+                endpoint_url=s3_endpoint,
+                aws_access_key=aws_access_key,
+                aws_secret_key=aws_secret_key
+            )
+            print(f"Uploaded raw VTT to: {raw_vtt_path}")
+
         return {
             "status": "done",
             "request_id": request_id,
             "srt_path": s3_path,
             "srt_key": s3_key,
-            "srt_bucket": s3_bucket
+            "srt_bucket": s3_bucket,
+            "raw_vtt_key": raw_vtt_key,
+            "raw_vtt_path": raw_vtt_path
         }
 
     except Exception as e:
