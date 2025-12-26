@@ -45,15 +45,21 @@ def format_timestamp(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
 
-def transcribe_to_srt(audio_path: str, model_name: str = "large") -> str:
+def transcribe_to_srt(audio_path: str, model_name: str = "large", language: str = "en") -> str:
     """
     Transcribe audio file to SRT format
     Returns the SRT content as a string
+
+    Args:
+        audio_path: Path to audio file
+        model_name: Whisper model name (default: "large")
+        language: ISO 639-1 language code for transcription (default: "en")
+                  Supported: en, ko, ja, zh, etc. (all Whisper-supported languages)
     """
-    print(f"Transcribing audio file: {audio_path}")
+    print(f"Transcribing audio file: {audio_path} (language: {language})")
 
     model = get_model(model_name)
-    result = model.transcribe(audio_path, language="en", fp16=True)
+    result = model.transcribe(audio_path, language=language, fp16=True)
 
     srt_content = []
     for idx, segment in enumerate(result["segments"], 1):
@@ -171,6 +177,7 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
     {
         "youtube_url": "https://www.youtube.com/watch?v=...",
         "request_id": "job-id",
+        "language": "en",  // ISO 639-1 code: en, ko, ja, zh, etc. (default: "en")
         "s3_bucket": "my-bucket",
         "s3_key_prefix": "transcriptions/",
         "s3_endpoint_url": "https://s3.example.com",
@@ -183,6 +190,9 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
 
         youtube_url = job_input.get("youtube_url")
         request_id = job_input.get("request_id", "unknown")
+        language = job_input.get("language", "en")  # ISO 639-1 code (default: English)
+
+        print(f"Processing request: {request_id}, language: {language}")
 
         if not youtube_url:
             return {
@@ -220,8 +230,8 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
             # Step 1: Download audio from YouTube
             audio_path = download_youtube_audio(youtube_url, tmpdir)
 
-            # Step 2: Transcribe to SRT
-            srt_content = transcribe_to_srt(audio_path)
+            # Step 2: Transcribe to SRT in specified language
+            srt_content = transcribe_to_srt(audio_path, language=language)
 
             # Step 3: Extract video_id from YouTube URL
             video_id = extract_video_id(youtube_url)
@@ -245,7 +255,7 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
 
             # Step 5: Convert SRT to VTT and upload raw VTT to storage/raw/
             vtt_content = srt_to_vtt(srt_content)
-            vtt_filename = f"{video_id}.en.vtt"
+            vtt_filename = f"{video_id}.{language}.vtt"  # Use language code in filename
             vtt_local_path = os.path.join(tmpdir, vtt_filename)
             with open(vtt_local_path, "w") as f:
                 f.write(vtt_content)
@@ -264,6 +274,7 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "status": "done",
             "request_id": request_id,
+            "language": language,
             "srt_path": s3_path,
             "srt_key": s3_key,
             "srt_bucket": s3_bucket,

@@ -1,13 +1,15 @@
 # YouTube to Whisper SRT Serverless Worker
 
-A Runpod Serverless endpoint that transcribes YouTube videos to English SRT format using OpenAI's Whisper model.
+A Runpod Serverless endpoint that transcribes YouTube videos to SRT/VTT format using OpenAI's Whisper model.
 
 ## Features
 
 - Downloads audio from YouTube URLs using `yt-dlp`
-- Transcribes audio to English using `faster-whisper` (faster and more efficient than openai/whisper)
+- Transcribes audio using `whisper` with configurable language support
+- **Multilingual support**: Transcribe in any Whisper-supported language (en, ko, ja, zh, etc.)
 - Generates SRT subtitle files with timestamps
-- Uploads results to S3-compatible object storage (e.g., Railway Postgres object storage)
+- Generates VTT files for web playback
+- Uploads results to S3-compatible object storage (e.g., Railway S3-compatible bucket)
 - Async job queue mode with status polling
 
 ## Input Specification
@@ -17,6 +19,7 @@ A Runpod Serverless endpoint that transcribes YouTube videos to English SRT form
   "input": {
     "youtube_url": "https://www.youtube.com/watch?v=...",
     "request_id": "unique-job-id",
+    "language": "en",
     "s3_bucket": "my-bucket",
     "s3_key_prefix": "transcriptions/",
     "s3_endpoint_url": "https://s3.example.com",
@@ -30,6 +33,8 @@ A Runpod Serverless endpoint that transcribes YouTube videos to English SRT form
 
 - **youtube_url** (required): Full YouTube URL to transcribe
 - **request_id** (required): Unique identifier for this job
+- **language** (optional, default: `en`): ISO 639-1 language code for transcription
+  - Supported languages: `en` (English), `ko` (Korean), `ja` (Japanese), `zh` (Chinese), and all other [Whisper-supported languages](https://github.com/openai/whisper#available-models-and-languages)
 - **s3_bucket** (required): S3 bucket name for output
 - **s3_key_prefix** (optional, default: `transcriptions/`): Prefix path in S3 bucket
 - **s3_endpoint_url** (optional): Custom S3 endpoint URL for non-AWS S3-compatible storage
@@ -44,11 +49,16 @@ S3 credentials can be provided via input parameters or environment variables.
 {
   "status": "done",
   "request_id": "unique-job-id",
+  "language": "en",
   "srt_path": "s3://my-bucket/transcriptions/unique-job-id.srt",
   "srt_key": "transcriptions/unique-job-id.srt",
-  "srt_bucket": "my-bucket"
+  "srt_bucket": "my-bucket",
+  "raw_vtt_key": "storage/raw/VIDEO_ID.en.vtt",
+  "raw_vtt_path": "s3://my-bucket/storage/raw/VIDEO_ID.en.vtt"
 }
 ```
+
+**Note:** The VTT filename includes the language code (e.g., `VIDEO_ID.ko.vtt` for Korean).
 
 Or on error:
 
