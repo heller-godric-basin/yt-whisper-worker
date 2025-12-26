@@ -56,7 +56,8 @@ Once the endpoint is active:
 1. Copy the **Endpoint ID** from the endpoint details
 2. Save it to your local machine:
    ```bash
-   echo "your-endpoint-id-here" > ~/yt_jobs/config/runpod_endpoint_id.txt
+   # Save your endpoint ID for reference
+   echo "your-endpoint-id-here" > ~/.runpod_endpoint_id
    ```
 
 ## Step 4: Test the Endpoint
@@ -65,20 +66,28 @@ Export your Runpod API key and test a job:
 
 ```bash
 export RUNPOD_API_KEY="your-runpod-api-key"
+export ENDPOINT_ID="your-endpoint-id"
 
-# Start a test job
-JOB_ID=$(run_yt_job "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-echo "Job ID: $JOB_ID"
+# Start a test job (async/queue mode)
+curl -X POST "https://api.runpod.ai/v2/${ENDPOINT_ID}/run" \
+  -H "Authorization: Bearer ${RUNPOD_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": {
+      "youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "request_id": "test-job-001",
+      "s3_bucket": "your-bucket",
+      "s3_endpoint_url": "https://your-s3-endpoint.com"
+    }
+  }'
 
-# Check status
-check_yt_job "$JOB_ID"
+# Response: {"id": "job-id-here", "status": "IN_QUEUE"}
 
-# Wait a moment, then check again
-sleep 60
-check_yt_job "$JOB_ID"
+# Check job status
+curl "https://api.runpod.ai/v2/${ENDPOINT_ID}/status/JOB_ID_HERE" \
+  -H "Authorization: Bearer ${RUNPOD_API_KEY}"
 
-# View full logs
-dump_yt_job_log "$JOB_ID"
+# When complete, output will include srt_path and raw_vtt_path
 ```
 
 ## Step 5: Monitor and Manage
@@ -140,7 +149,7 @@ dump_yt_job_log "$JOB_ID"
 ## Next Steps
 
 After deployment:
-1. Create n8n workflows to invoke the endpoint
-2. Set up monitoring/alerting for job failures
-3. Build UI dashboard to track transcription jobs
-4. Integrate with downstream translation services
+1. Set up monitoring/alerting for job failures
+2. Integrate with your workflow automation platform
+3. Build a dashboard to track transcription jobs (optional)
+4. Connect to downstream processing services as needed
