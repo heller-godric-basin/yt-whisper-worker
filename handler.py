@@ -134,8 +134,8 @@ def _download_with_ytdlp(youtube_url: str, output_dir: str) -> str:
 
 
 def _download_with_pytube(youtube_url: str, output_dir: str) -> str:
-    """Download YouTube audio using pytube (fallback)"""
-    from pytube import YouTube
+    """Download YouTube audio using pytubefix (fallback)"""
+    from pytubefix import YouTube
 
     yt = YouTube(youtube_url)
 
