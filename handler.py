@@ -104,41 +104,95 @@ def extract_video_id(youtube_url: str) -> str:
     raise ValueError(f"Could not extract video ID from URL: {youtube_url}")
 
 
-def download_youtube_audio(youtube_url: str, output_dir: str) -> str:
-    """Download YouTube video and extract audio as MP3"""
-    print(f"Downloading audio from: {youtube_url}")
+def _download_with_ytdlp(youtube_url: str, output_dir: str) -> str:
+    """Download YouTube audio using yt-dlp"""
+    output_template = os.path.join(output_dir, "%(title)s.%(ext)s")
+    result = subprocess.run(
+        [
+            "yt-dlp",
+            "-f", "bestaudio/best",
+            "-x",
+            "--audio-format", "mp3",
+            "--audio-quality", "192",
+            "-o", output_template,
+            youtube_url
+        ],
+        capture_output=True,
+        text=True,
+        timeout=300
+    )
 
-    try:
-        output_template = os.path.join(output_dir, "%(title)s.%(ext)s")
+    if result.returncode != 0:
+        raise Exception(f"yt-dlp failed: {result.stderr}")
+
+    # Find the downloaded audio file
+    mp3_files = list(Path(output_dir).glob("*.mp3"))
+    if not mp3_files:
+        raise Exception("No MP3 file found after yt-dlp download")
+
+    return str(mp3_files[0])
+
+
+def _download_with_pytube(youtube_url: str, output_dir: str) -> str:
+    """Download YouTube audio using pytube (fallback)"""
+    from pytube import YouTube
+
+    yt = YouTube(youtube_url)
+
+    # Get audio-only stream (highest bitrate)
+    audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
+
+    if not audio_stream:
+        raise Exception("No audio stream found via pytube")
+
+    # Download to output directory
+    downloaded_path = audio_stream.download(output_path=output_dir)
+    print(f"pytube downloaded: {downloaded_path}")
+
+    # Convert to mp3 if needed (pytube downloads as m4a/webm)
+    output_path = Path(downloaded_path)
+    if output_path.suffix.lower() != '.mp3':
+        mp3_path = output_path.with_suffix('.mp3')
+        # Use ffmpeg to convert
         result = subprocess.run(
-            [
-                "yt-dlp",
-                "-f", "bestaudio/best",
-                "-x",
-                "--audio-format", "mp3",
-                "--audio-quality", "192",
-                "-o", output_template,
-                youtube_url
-            ],
+            ['ffmpeg', '-i', str(output_path), '-vn', '-acodec', 'libmp3lame', '-q:a', '2', str(mp3_path)],
             capture_output=True,
             text=True,
-            timeout=300
+            timeout=120
         )
-
         if result.returncode != 0:
-            raise Exception(f"yt-dlp failed: {result.stderr}")
+            # If ffmpeg fails, try using pydub
+            from pydub import AudioSegment
+            audio = AudioSegment.from_file(str(output_path))
+            audio.export(str(mp3_path), format='mp3', bitrate='192k')
 
-        # Find the downloaded audio file
-        mp3_files = list(Path(output_dir).glob("*.mp3"))
-        if not mp3_files:
-            raise Exception("No MP3 file found after download")
+        # Remove original file
+        output_path.unlink()
+        return str(mp3_path)
 
-        audio_path = str(mp3_files[0])
-        print(f"Downloaded audio to: {audio_path}")
+    return downloaded_path
+
+
+def download_youtube_audio(youtube_url: str, output_dir: str) -> str:
+    """Download YouTube video audio - tries yt-dlp first, falls back to pytube"""
+    print(f"Downloading audio from: {youtube_url}")
+
+    # Try yt-dlp first (generally more reliable and faster)
+    try:
+        audio_path = _download_with_ytdlp(youtube_url, output_dir)
+        print(f"Downloaded audio via yt-dlp: {audio_path}")
         return audio_path
-
     except Exception as e:
-        raise Exception(f"Failed to download YouTube audio: {str(e)}")
+        print(f"yt-dlp failed: {e}")
+        print("Attempting pytube fallback...")
+
+    # Fallback to pytube
+    try:
+        audio_path = _download_with_pytube(youtube_url, output_dir)
+        print(f"Downloaded audio via pytube fallback: {audio_path}")
+        return audio_path
+    except Exception as e:
+        raise Exception(f"All download methods failed. yt-dlp and pytube both failed. Last error: {str(e)}")
 
 
 def upload_to_s3(
