@@ -23,7 +23,7 @@ current_model = None
 current_model_name = None
 
 
-def get_model(model_name: str = "large"):
+def get_model(model_name: str = "large-v3-turbo"):
     """Load and cache Whisper model"""
     global current_model, current_model_name
 
@@ -45,7 +45,7 @@ def format_timestamp(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
 
-def transcribe_to_srt(audio_path: str, model_name: str = "large", language: str = "en") -> str:
+def transcribe_to_srt(audio_path: str, model_name: str = "large-v3-turbo", language: str = "en") -> str:
     """
     Transcribe audio file to SRT format
     Returns the SRT content as a string
